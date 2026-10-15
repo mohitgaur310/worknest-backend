@@ -19,7 +19,7 @@ async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.error('MONGODB_URI is not set. Skipping MongoDB connection.');
-    return;
+    return false;
   }
 
   try {
@@ -27,8 +27,10 @@ async function connectDB() {
       serverSelectionTimeoutMS: 5000,
     });
     console.log('MongoDB connected');
+    return true;
   } catch (error) {
     console.error(`MongoDB connection failed: ${error.message}`);
+    return false;
   }
 }
 
