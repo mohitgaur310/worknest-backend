@@ -1,14 +1,15 @@
 # Worknest backend
 
-Node.js API scaffold using Express and Mongoose.
+Node.js API using Express, Mongoose, and an httpOnly session cookie stored in MongoDB.
 
 ## Install
 
 ```bash
-cd /home/mohitgaur/wms/Worknest-backend
 cp .env.example .env
 npm install
 ```
+
+`.env.example` sets `PORT`, `MONGODB_URI`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `SESSION_SECRET`. The first startup with an empty database creates an organization named Worknest and one admin from `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 ## Run MongoDB
 
@@ -26,7 +27,7 @@ Or with Docker:
 docker run --name worknest-mongo -p 27017:27017 -d mongo:7
 ```
 
-The API process still starts when MongoDB is down. `GET /health` reports the current connection state (`disconnected`, `connecting`, `connected`, or `disconnecting`).
+The API process still starts when MongoDB is down. `GET /health` reports the current connection state (`disconnected`, `connecting`, `connected`, or `disconnecting`). Sign-in stays unavailable until MongoDB is connected.
 
 ## Start the API
 
@@ -41,3 +42,42 @@ npm run dev
 ```
 
 Health check: [http://localhost:4000/health](http://localhost:4000/health)
+
+## Auth
+
+Sessions use the `worknest.sid` cookie: httpOnly, SameSite=Lax, and Secure=false so local HTTP works. The browser origin `http://localhost:5173` is allowed with credentials.
+
+- `POST /auth/login` with `{ email, password }`
+- `POST /auth/logout`
+- `GET /auth/me`
+- `POST /users` admin only, `{ name, email, password, role }`
+- `GET /users` admin only, users in the same organization, no password hashes
+
+Each user has one role: `admin`, `hr`, `manager`, or `employee`.
+
+## Projects and tasks
+
+Every route below requires a signed-in session. Responses never include password hashes. The server checks the caller's organization and project membership on each route.
+
+Projects have a name, description, status (`active` or `archived`), organization, and creator. Creating a project adds the creator as a member. Admin and manager can create projects. HR and employee cannot. Admin can list every project in the organization. Everyone else lists only projects they belong to. Archived projects stay in the list.
+
+- `POST /projects` with `{ name, description }`
+- `GET /projects`
+- `GET /projects/:id` returns the project, its members, and whether the caller can update the project or change members
+- `PATCH /projects/:id` with `{ name, description, status }` archives by setting `status` to `archived`
+- `POST /projects/:id/members` with `{ userId }`
+- `DELETE /projects/:id/members/:userId`
+
+An admin or manager must be a member of the project to add or remove members. The new member must be an active user in the same organization. There is no project-level role.
+
+Tasks belong to one project. Members and admins can list and update them. A non-member who is not an admin receives 403. Ids from another organization are rejected.
+
+- `POST /projects/:id/tasks`
+- `GET /projects/:id/tasks` filters: `status`, `assigneeId`, `priority`, and `mine=true`
+- `GET /tasks/:id`
+- `PATCH /tasks/:id` updates title, description, status (`todo`, `in_progress`, `done`), priority (`low`, `medium`, `high`), assignee, and due date (`YYYY-MM-DD`)
+- `POST /tasks/:id/comments` with `{ body }`
+- `GET /tasks/:id/comments`
+- `GET /tasks/:id/activity`
+
+An archived project rejects new tasks. Existing tasks can still be updated. Activity records task creation, status changes, assignee changes, and priority changes.
