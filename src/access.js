@@ -3,6 +3,7 @@ const { User } = require('./models/user');
 const { Project } = require('./models/project');
 const { Membership } = require('./models/membership');
 const { Task, TASK_STATUSES, PRIORITIES } = require('./models/task');
+const { Sprint } = require('./models/sprint');
 const { readEnum, readQuery } = require('./fields');
 
 const PUBLIC_USER_FIELDS = 'name email role active organizationId';
@@ -28,6 +29,10 @@ function canEditProject(user, membership) {
   return user.role === 'manager' && Boolean(membership);
 }
 
+function canManageSprints(user, membership) {
+  return canEditProject(user, membership);
+}
+
 async function findAccessibleProject(user, projectId) {
   if (!mongoose.isValidObjectId(projectId)) {
     return { status: 400, message: 'Invalid project id' };
@@ -47,6 +52,41 @@ async function findAccessibleProject(user, projectId) {
   }
 
   return { project, membership };
+}
+
+async function findAccessibleSprint(user, sprintId) {
+  if (!mongoose.isValidObjectId(sprintId)) {
+    return { status: 400, message: 'Invalid sprint id' };
+  }
+
+  const sprint = await Sprint.findById(sprintId);
+  if (!sprint) {
+    return { status: 404, message: 'Sprint not found' };
+  }
+
+  const access = await findAccessibleProject(user, sprint.projectId);
+  if (access.status === 404) {
+    return { status: 404, message: 'Sprint not found' };
+  }
+  if (access.status) {
+    return {
+      status: access.status,
+      message: access.status === 403 ? 'You do not have access to this sprint' : access.message,
+    };
+  }
+
+  return { sprint, project: access.project, membership: access.membership };
+}
+
+async function currentWorkFilter(projectId) {
+  const excludedIds = await Sprint.find({
+    projectId,
+    status: { $in: ['planned', 'completed'] },
+  }).distinct('_id');
+  if (excludedIds.length === 0) {
+    return {};
+  }
+  return { sprintId: { $nin: excludedIds } };
 }
 
 async function findAccessibleTask(user, taskId) {
@@ -202,7 +242,10 @@ module.exports = {
   sameOrg,
   canManageMembers,
   canEditProject,
+  canManageSprints,
   findAccessibleProject,
+  findAccessibleSprint,
+  currentWorkFilter,
   findAccessibleTask,
   usersById,
   listMemberRecords,

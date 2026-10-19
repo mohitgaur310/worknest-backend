@@ -9,13 +9,16 @@ const {
   PUBLIC_USER_FIELDS,
   canManageMembers,
   canEditProject,
+  canManageSprints,
   findAccessibleProject,
+  currentWorkFilter,
   listMemberRecords,
   findActiveOrgMember,
   resolveAssignee,
   resolveTaskFilters,
 } = require('../access');
 const { presentTask, presentTasks } = require('../present');
+const { projectSprintRoutes } = require('./sprints');
 const {
   assertObject,
   unknownField,
@@ -121,6 +124,7 @@ router.get('/:id', async (req, res, next) => {
       members,
       canManageMembers: manageMembers,
       canUpdateProject: canEditProject(req.user, access.membership),
+      canManageSprints: canManageSprints(req.user, access.membership),
     };
 
     if (manageMembers) {
@@ -312,7 +316,10 @@ router.get('/:id/tasks', async (req, res, next) => {
       return sendFailure(res, filters);
     }
 
-    const query = { projectId: access.project._id };
+    const query = {
+      projectId: access.project._id,
+      ...(await currentWorkFilter(access.project._id)),
+    };
     if (filters.taskStatus) {
       query.status = filters.taskStatus;
     }
@@ -436,5 +443,7 @@ router.post('/:id/tasks', async (req, res, next) => {
     return next(error);
   }
 });
+
+router.use(projectSprintRoutes);
 
 module.exports = router;

@@ -49,7 +49,7 @@ function readQuery(value, label) {
   return { value: trimmed || undefined };
 }
 
-function parseDueDate(value) {
+function parseDate(value, label) {
   if (value === undefined) {
     return { value: undefined };
   }
@@ -57,7 +57,7 @@ function parseDueDate(value) {
     return { value: null };
   }
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-    return { error: 'dueDate must be YYYY-MM-DD' };
+    return { error: `${label} must be YYYY-MM-DD` };
   }
   const trimmed = value.trim();
   const year = Number(trimmed.slice(0, 4));
@@ -69,9 +69,13 @@ function parseDueDate(value) {
     date.getUTCMonth() !== month - 1 ||
     date.getUTCDate() !== day
   ) {
-    return { error: 'dueDate must be YYYY-MM-DD' };
+    return { error: `${label} must be YYYY-MM-DD` };
   }
   return { value: date };
+}
+
+function parseDueDate(value) {
+  return parseDate(value, 'dueDate');
 }
 
 function formatDueDate(value) {
@@ -94,6 +98,7 @@ module.exports = {
   readText,
   readEnum,
   readQuery,
+  parseDate,
   parseDueDate,
   formatDueDate,
 };

@@ -7,7 +7,11 @@ const { connectDB, getMongoState } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
+const { sprintRoutes } = require('./routes/sprints');
 const taskRoutes = require('./routes/tasks');
+const employeeRoutes = require('./routes/employees');
+const leaveRoutes = require('./routes/leave');
+const payslipRoutes = require('./routes/payslips');
 const { seedIfEmpty } = require('./seed');
 const { createSessionMiddleware } = require('./session');
 
@@ -58,7 +62,11 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/projects', projectRoutes);
+app.use('/sprints', sprintRoutes);
 app.use('/tasks', taskRoutes);
+app.use('/employees', employeeRoutes);
+app.use('/leave', leaveRoutes);
+app.use('/payslips', payslipRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });

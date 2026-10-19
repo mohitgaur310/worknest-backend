@@ -80,4 +80,23 @@ Tasks belong to one project. Members and admins can list and update them. A non-
 - `GET /tasks/:id/comments`
 - `GET /tasks/:id/activity`
 
-An archived project rejects new tasks. Existing tasks can still be updated. Activity records task creation, status changes, assignee changes, and priority changes.
+An archived project rejects new tasks and rejects task edits, including status changes. Status must be `todo`, `in_progress`, or `done`. Activity records task creation, status changes, assignee changes, and priority changes.
+
+## People, leave, and payslips
+
+Employee profiles are separate from sign-in accounts. HR or an admin creates and edits them. A profile has a name, job title, department, start date, a linked user in the same organization, and an optional manager. A user can have one profile. Project membership does not reveal profiles, leave, or payslips. Responses never include password hashes or file paths.
+
+- `POST /employees` and `PATCH /employees/:id` for HR or admin
+- `GET /employees` and `GET /employees/:id` — admin and HR see the organization, a manager sees their own profile and direct reports, anyone else sees only their own profile
+
+Leave types are `annual`, `sick`, and `unpaid`. The signed-in person submits for their own profile. Status is `pending`, `approved`, or `rejected`. The profile's manager decides when one is set; otherwise any HR user can decide. An admin can also decide. The record stores the approver, the time, and an optional comment. Balances are not calculated.
+
+- `POST /leave` with `{ type, startDate, endDate, reason }`
+- `GET /leave` returns only requests the caller is allowed to see
+- `POST /leave/:id/decision` with `{ status, comment }`
+
+Payslips are uploaded PDFs, at most 5 MB, stored outside the repo (`FILE_ROOT`, or `~/worknest-files`). HR or an admin uploads one for an employee. The employee, HR, and admins can download it through the API. Another employee, a manager, and a project member receive 403.
+
+- `POST /employees/:id/payslips` multipart field `file`
+- `GET /employees/:id/payslips`
+- `GET /payslips/:id/file`

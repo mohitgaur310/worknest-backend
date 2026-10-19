@@ -64,6 +64,9 @@ router.patch('/:id', async (req, res, next) => {
     if (!hasField) {
       return res.status(400).json({ error: 'No changes provided' });
     }
+    if (access.project.status === 'archived') {
+      return res.status(400).json({ error: 'Archived projects cannot change tasks' });
+    }
 
     const task = access.task;
     const changes = [];

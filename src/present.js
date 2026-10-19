@@ -1,5 +1,6 @@
 const { formatDueDate } = require('./fields');
 const { usersById } = require('./access');
+const { Task } = require('./models/task');
 
 function person(user) {
   if (!user) {
@@ -26,6 +27,7 @@ function toPublicTask(task, users) {
     status: task.status,
     priority: task.priority,
     dueDate: formatDueDate(task.dueDate),
+    sprintId: task.sprintId ? task.sprintId.toString() : null,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   };
@@ -45,6 +47,51 @@ async function presentTasks(tasks) {
 
 async function presentTask(task) {
   const [presented] = await presentTasks([task]);
+  return presented;
+}
+
+function toPublicSprint(sprint, tasks) {
+  const done = tasks.filter((task) => task.status === 'done').length;
+  return {
+    id: sprint._id.toString(),
+    name: sprint.name,
+    goal: sprint.goal || '',
+    startDate: formatDueDate(sprint.startDate),
+    endDate: formatDueDate(sprint.endDate),
+    status: sprint.status,
+    projectId: sprint.projectId.toString(),
+    createdAt: sprint.createdAt,
+    updatedAt: sprint.updatedAt,
+    counts: {
+      total: tasks.length,
+      done,
+    },
+    tasks,
+  };
+}
+
+async function presentSprints(sprints) {
+  if (sprints.length === 0) {
+    return [];
+  }
+  const tasks = await Task.find({
+    sprintId: { $in: sprints.map((sprint) => sprint._id) },
+  }).sort({ updatedAt: -1, _id: -1 });
+  const presented = await presentTasks(tasks);
+  const grouped = new Map();
+  for (const task of presented) {
+    const list = grouped.get(task.sprintId);
+    if (list) {
+      list.push(task);
+    } else {
+      grouped.set(task.sprintId, [task]);
+    }
+  }
+  return sprints.map((sprint) => toPublicSprint(sprint, grouped.get(sprint._id.toString()) || []));
+}
+
+async function presentSprint(sprint) {
+  const [presented] = await presentSprints([sprint]);
   return presented;
 }
 
@@ -120,6 +167,8 @@ function projectSummary(project) {
 module.exports = {
   presentTask,
   presentTasks,
+  presentSprint,
+  presentSprints,
   presentComment,
   presentComments,
   presentActivity,

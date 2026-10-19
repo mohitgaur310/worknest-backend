@@ -49,12 +49,18 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    sprintId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Sprint',
+      default: null,
+    },
   },
   { timestamps: true },
 );
 
 taskSchema.index({ projectId: 1, status: 1 });
 taskSchema.index({ assigneeId: 1 });
+taskSchema.index({ sprintId: 1 });
 
 module.exports = {
   Task: mongoose.model('Task', taskSchema),
